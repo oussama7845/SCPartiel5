@@ -18,7 +18,67 @@ class DeliveryService {
             }
 
             let base = pkg.distance * 0.1;
-            if (pkg.weight > 10) {
+            if (pkg.weight > 10) {class Package {
+                constructor(public weight: number, public distance: number) {
+                    if (weight < 0) throw new Error("Invalid weight!");
+                }
+            }
+            
+            type CustomerType = "Regular" | "VIP" | "Business";
+            
+            class DeliveryService {
+                private static readonly BASE_RATE = 0.1;
+                private static readonly WEIGHT_SURCHARGES = [
+                    { limit: 5, surcharge: 0 },
+                    { limit: 10, surcharge: 3 },
+                    { limit: Infinity, surcharge: 5 }
+                ];
+                private static readonly CUSTOMER_DISCOUNTS: Record<CustomerType, number> = {
+                    Regular: 1,
+                    VIP: 0.8,
+                    Business: 0.9,
+                };
+                private static readonly BULK_DISCOUNT_THRESHOLD = 3;
+                private static readonly BULK_DISCOUNT = 0.95;
+                private static readonly URGENT_MULTIPLIER = 1.5;
+                
+                calculateDeliveryPrice(packages: Package[], customerType: CustomerType, urgent: boolean): number {
+                    let total = packages.reduce((sum, pkg) => sum + this.calculatePackagePrice(pkg, urgent, customerType), 0);
+                    
+                    if (packages.length > DeliveryService.BULK_DISCOUNT_THRESHOLD) {
+                        total *= DeliveryService.BULK_DISCOUNT;
+                    }
+                    
+                    return total;
+                }
+            
+                private calculatePackagePrice(pkg: Package, urgent: boolean, customerType: CustomerType): number {
+                    let base = pkg.distance * DeliveryService.BASE_RATE;
+                    let surcharge = DeliveryService.WEIGHT_SURCHARGES.find(s => pkg.weight <= s.limit)?.surcharge || 0;
+                    
+                    let price = base + surcharge;
+                    if (urgent) price *= DeliveryService.URGENT_MULTIPLIER;
+                    price *= DeliveryService.CUSTOMER_DISCOUNTS[customerType];
+                    
+                    return price;
+                }
+            
+                printInvoice(packages: Package[], customerType: CustomerType): void {
+                    try {
+                        const price = this.calculateDeliveryPrice(packages, customerType, false);
+                        console.log(`Total: ${price.toFixed(2)}`);
+                        if (price > 100) console.log("Apply special discount next time!");
+                    } catch (error) {
+                        console.error(error.message);
+                    }
+                }
+            }
+            
+            // Exemple d'utilisation
+            const packages = [new Package(8, 100), new Package(12, 200)];
+            const service = new DeliveryService();
+            service.printInvoice(packages, "VIP");
+            
                 base += 5;
             } else if (pkg.weight > 5) {
                 base += 3;

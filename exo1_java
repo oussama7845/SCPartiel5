@@ -1,55 +1,95 @@
 import java.util.List;
 
-public class DeliveryService {
+class Package {
+    private double weight;
+    private double distance;
+
+    public Package(double weight, double distance) {
+        if (weight < 0) {
+            throw new IllegalArgumentException("Invalid weight!");
+        }
+        this.weight = weight;
+        this.distance = distance;
+    }
+
+    public double getWeight() {
+        return weight;
+    }
+
+    public double getDistance() {
+        return distance;
+    }
+}
+
+class DeliveryService {
+    private static final double BASE_RATE = 0.1;
+    private static final double[][] WEIGHT_SURCHARGES = {{5, 0}, {10, 3}, {Double.POSITIVE_INFINITY, 5}};
+    private static final double BULK_DISCOUNT_THRESHOLD = 3;
+    private static final double BULK_DISCOUNT = 0.95;
+    private static final double URGENT_MULTIPLIER = 1.5;
     
     public double calculateDeliveryPrice(List<Package> packages, String customerType, boolean urgent) {
-        double total = 0;
+        double total = packages.stream()
+            .mapToDouble(pkg -> calculatePackagePrice(pkg, urgent, customerType))
+            .sum();
         
-        for (Package pkg : packages) {
-            if (pkg.weight < 0) {
-                System.out.println("Invalid weight!");
-                return -1;
-            }
-            
-            double base = pkg.distance * 0.1;
-            
-            if (pkg.weight > 10) {
-                base += 5;
-            } else if (pkg.weight > 5) {
-                base += 3;
-            }
-            
-            if (urgent) {
-                base *= 1.5;
-            }
-            
-            if (customerType.equals("VIP")) {
-                base *= 0.8;
-            } else if (customerType.equals("Business")) {
-                base *= 0.9;
-            }
-            
-            total += base;
-        }
-        
-        if (packages.size() > 3) {
-            total *= 0.95;
+        if (packages.size() > BULK_DISCOUNT_THRESHOLD) {
+            total *= BULK_DISCOUNT;
         }
         
         return total;
     }
-    
+
+    private double calculatePackagePrice(Package pkg, boolean urgent, String customerType) {
+        double base = pkg.getDistance() * BASE_RATE;
+        double surcharge = getSurcharge(pkg.getWeight());
+        double price = base + surcharge;
+
+        if (urgent) {
+            price *= URGENT_MULTIPLIER;
+        }
+        price *= getCustomerDiscount(customerType);
+
+        return price;
+    }
+
+    private double getSurcharge(double weight) {
+        for (double[] tier : WEIGHT_SURCHARGES) {
+            if (weight <= tier[0]) {
+                return tier[1];
+            }
+        }
+        return 0;
+    }
+
+    private double getCustomerDiscount(String customerType) {
+        return switch (customerType) {
+            case "VIP" -> 0.8;
+            case "Business" -> 0.9;
+            default -> 1.0;
+        };
+    }
+
     public void printInvoice(List<Package> packages, String customerType) {
-        double price = calculateDeliveryPrice(packages, customerType, false);
-        System.out.println("Total: " + price);
-        
-        if (price > 100) {
-            System.out.println("Apply special discount next time!");
+        try {
+            double price = calculateDeliveryPrice(packages, customerType, false);
+            System.out.printf("Total: %.2f%n", price);
+            if (price > 100) {
+                System.out.println("Apply special discount next time!");
+            }
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
         }
     }
-    
-    public class Package {
-        public double weight;
-        public double distance;
+}
+
+// Exemple d'utilisation
+import java.util.Arrays;
+
+public class Main {
+    public static void main(String[] args) {
+        List<Package> packages = Arrays.asList(new Package(8, 100), new Package(12, 200));
+        DeliveryService service = new DeliveryService();
+        service.printInvoice(packages, "VIP");
     }
 }

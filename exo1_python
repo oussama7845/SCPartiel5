@@ -4,36 +4,74 @@ class DeliveryService:
             self.weight = weight
             self.distance = distance
 
+    # Constants for pricing
+    BASE_RATE_PER_KM = 0.1
+    WEIGHT_SURCHARGE_OVER_10KG = 5
+    WEIGHT_SURCHARGE_OVER_5KG = 3
+    URGENT_DELIVERY_MULTIPLIER = 1.5
+    VIP_DISCOUNT_MULTIPLIER = 0.8
+    BUSINESS_DISCOUNT_MULTIPLIER = 0.9
+    BULK_DISCOUNT_MULTIPLIER = 0.95
+    SPECIAL_DISCOUNT_THRESHOLD = 100
+
+    def calculate_base_price(self, pkg: Package) -> float:
+        if pkg.weight < 0:
+            raise ValueError("Invalid weight!")
+        
+        base_price = pkg.distance * self.BASE_RATE_PER_KM
+        
+        if pkg.weight > 10:
+            base_price += self.WEIGHT_SURCHARGE_OVER_10KG
+        elif pkg.weight > 5:
+            base_price += self.WEIGHT_SURCHARGE_OVER_5KG
+        
+        return base_price
+
+    def apply_urgent_delivery(self, price: float) -> float:
+        return price * self.URGENT_DELIVERY_MULTIPLIER
+
+    def apply_customer_discount(self, price: float, customer_type: str) -> float:
+        if customer_type == "VIP":
+            return price * self.VIP_DISCOUNT_MULTIPLIER
+        elif customer_type == "Business":
+            return price * self.BUSINESS_DISCOUNT_MULTIPLIER
+        return price
+
+    def apply_bulk_discount(self, price: float, num_packages: int) -> float:
+        if num_packages > 3:
+            return price * self.BULK_DISCOUNT_MULTIPLIER
+        return price
+
     def calculate_delivery_price(self, packages: list[Package], customer_type: str, urgent: bool) -> float:
         total = 0.0
+        
         for pkg in packages:
-            if pkg.weight < 0:
-                print("Invalid weight!")
-                return -1
-            
-            base = pkg.distance * 0.1
-            if pkg.weight > 10:
-                base += 5
-            elif pkg.weight > 5:
-                base += 3
+            base_price = self.calculate_base_price(pkg)
             
             if urgent:
-                base *= 1.5
+                base_price = self.apply_urgent_delivery(base_price)
             
-            if customer_type == "VIP":
-                base *= 0.8
-            elif customer_type == "Business":
-                base *= 0.9
+            base_price = self.apply_customer_discount(base_price, customer_type)
             
-            total += base
+            total += base_price
         
-        if len(packages) > 3:
-            total *= 0.95
+        total = self.apply_bulk_discount(total, len(packages))
         
         return total
 
     def print_invoice(self, packages: list[Package], customer_type: str) -> None:
-        price = self.calculate_delivery_price(packages, customer_type, False)
-        print(f"Total: {price}")
-        if price > 100:
-            print("Apply special discount next time!")
+        try:
+            price = self.calculate_delivery_price(packages, customer_type, False)
+            print(f"Total: {price}")
+            if price > self.SPECIAL_DISCOUNT_THRESHOLD:
+                print("Apply special discount next time!")
+        except ValueError as e:
+            print(e)
+
+# Example d'utisation
+service = DeliveryService()
+packages = [
+    DeliveryService.Package(7, 100),
+    DeliveryService.Package(12, 200),
+]
+service.print_invoice(packages, "VIP")
